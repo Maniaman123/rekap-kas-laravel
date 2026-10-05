@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\KasController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -25,20 +26,40 @@ Route::get('/welcome', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Student view — authenticated, pelajar role
+| Transaction module — shared read, role-gated mutations
 |--------------------------------------------------------------------------
-| Named `kas.index` so the role-redirect helpers in both auth controllers
-| can reference a single canonical name.
+|
+| GET  /transactions          → TransactionController@index
+|                               Renders 'Dashboard' for bendahara,
+|                               'KasSiswa' for pelajar (role branching in controller).
+|
+| POST /transactions          → TransactionController@store     (bendahara only)
+| DELETE /transactions/{id}   → TransactionController@destroy   (bendahara only)
+*/
+Route::middleware('auth')->group(function () {
+    // Read — all authenticated users
+    Route::get('/transactions', [TransactionController::class, 'index'])
+        ->name('transactions.index');
+
+    // Mutations — bendahara only (middleware + controller double-gate)
+    Route::middleware('role:bendahara')->group(function () {
+        Route::post('/transactions', [TransactionController::class, 'store'])
+            ->name('transactions.store');
+
+        Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy'])
+            ->name('transactions.destroy');
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Legacy KasController routes (kept for backward-compatibility)
+|--------------------------------------------------------------------------
 */
 Route::get('/kas', [KasController::class, 'index'])
     ->middleware(['auth'])
     ->name('kas.index');
 
-/*
-|--------------------------------------------------------------------------
-| Treasurer-only mutation routes — require bendahara role
-|--------------------------------------------------------------------------
-*/
 Route::middleware(['auth', 'role:bendahara'])->group(function () {
     Route::post('/kas', [KasController::class, 'store'])->name('kas.store');
     Route::delete('/kas/{id}', [KasController::class, 'destroy'])->name('kas.destroy');
