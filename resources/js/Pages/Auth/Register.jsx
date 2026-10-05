@@ -1,4 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
+import { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 
 // ─── Field ──────────────────────────────────────────────────────────────────
 /**
@@ -15,30 +17,51 @@ import { Head, Link, useForm } from '@inertiajs/react';
  * @param {React.ReactNode} [props.hint]
  */
 function Field({ id, label, type = 'text', value, autoComplete, autoFocus, placeholder, onChange, error, hint }) {
+    const [showPassword, setShowPassword] = useState(false);
+    const isPassword = type === 'password';
+    const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
+
     return (
         <div>
             <label htmlFor={id} className="block text-sm font-medium text-slate-700">
                 {label}
             </label>
             {hint && <p className="mt-0.5 text-xs text-slate-400">{hint}</p>}
-            <input
-                id={id}
-                type={type}
-                name={id}
-                value={value}
-                autoComplete={autoComplete}
-                autoFocus={autoFocus}
-                placeholder={placeholder}
-                onChange={onChange}
-                className={[
-                    'mt-1.5 block w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 shadow-xs',
-                    'placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#4B729F]/40',
-                    'transition-colors duration-150',
-                    error
-                        ? 'border-red-400 bg-red-50/40 focus:ring-red-400/30'
-                        : 'border-slate-200/80 bg-white hover:border-slate-300',
-                ].join(' ')}
-            />
+            <div className="relative mt-1.5">
+                <input
+                    id={id}
+                    type={inputType}
+                    name={id}
+                    value={value}
+                    autoComplete={autoComplete}
+                    autoFocus={autoFocus}
+                    placeholder={placeholder}
+                    onChange={onChange}
+                    className={[
+                        'block w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 shadow-xs',
+                        isPassword ? 'pr-11' : '',
+                        'placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#4B729F]/40',
+                        'transition-colors duration-150',
+                        error
+                            ? 'border-red-400 bg-red-50/40 focus:ring-red-400/30'
+                            : 'border-slate-200/80 bg-white hover:border-slate-300',
+                    ].join(' ')}
+                />
+                {isPassword && (
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+                        className="absolute inset-y-0 right-0 flex items-center justify-center px-3.5 text-slate-400 hover:text-[#1E3A8A] focus:outline-none transition-colors min-h-[44px] min-w-[44px]"
+                    >
+                        {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                        ) : (
+                            <Eye className="h-4 w-4" />
+                        )}
+                    </button>
+                )}
+            </div>
             {error && (
                 <p className="mt-1.5 text-xs font-medium text-red-600">{error}</p>
             )}
