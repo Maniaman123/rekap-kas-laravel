@@ -33,7 +33,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
                         </div>
 
-                        <div className="hidden sm:ms-6 sm:flex sm:items-center">
+                        <div className="hidden sm:ms-6 sm:flex sm:items-center sm:gap-3">
                             <div className="relative ms-3">
                                 <Dropdown>
                                     <Dropdown.Trigger>
@@ -76,6 +76,15 @@ export default function AuthenticatedLayout({ header, children }) {
                                     </Dropdown.Content>
                                 </Dropdown>
                             </div>
+
+                            <Link
+                                method="post"
+                                as="button"
+                                href={route('logout')}
+                                className="border border-rose-200 text-rose-600 bg-rose-50 hover:bg-rose-100 transition rounded-xl text-xs font-semibold px-3.5 py-2 inline-flex items-center gap-1.5 min-h-[44px] sm:min-h-0"
+                            >
+                                Keluar
+                            </Link>
                         </div>
 
                         <div className="-me-2 flex items-center sm:hidden">
@@ -146,17 +155,18 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
                         </div>
 
-                        <div className="mt-3 space-y-1">
+                        <div className="mt-3 space-y-2 px-4 pb-2">
                             <ResponsiveNavLink href={route('profile.edit')}>
                                 Profile
                             </ResponsiveNavLink>
-                            <ResponsiveNavLink
+                            <Link
                                 method="post"
-                                href={route('logout')}
                                 as="button"
+                                href={route('logout')}
+                                className="w-full border border-rose-200 text-rose-600 bg-rose-50 hover:bg-rose-100 transition rounded-xl text-xs font-semibold px-3.5 py-2.5 min-h-[44px] flex items-center justify-center text-center"
                             >
-                                Log Out
-                            </ResponsiveNavLink>
+                                Keluar
+                            </Link>
                         </div>
                     </div>
                 </div>

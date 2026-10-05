@@ -1,4 +1,4 @@
-import { useForm, router } from '@inertiajs/react';
+import { useForm, router, Link } from '@inertiajs/react';
 import { useState } from 'react';
 import {
     Wallet,
@@ -12,6 +12,7 @@ import {
     Check,
     X,
     Coins,
+    LogOut,
 } from 'lucide-react';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -79,7 +80,7 @@ export default function KasIndex({ transactions = [], totalMasuk = 0, totalKelua
                             </div>
                         </div>
 
-                        {/* Quick Stats Pill */}
+                        {/* Quick Stats Pill & Actions */}
                         <div className="flex items-center gap-3 self-start sm:self-auto">
                             <div className="flex items-center gap-2 rounded-lg border border-slate-200/80 bg-slate-50/50 px-3 py-1.5 text-xs">
                                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -88,6 +89,16 @@ export default function KasIndex({ transactions = [], totalMasuk = 0, totalKelua
                                     {transactions.length}
                                 </span>
                             </div>
+
+                            <Link
+                                method="post"
+                                as="button"
+                                href={route('logout')}
+                                className="border border-rose-200 text-rose-600 bg-rose-50 hover:bg-rose-100 transition rounded-xl text-xs font-semibold px-3.5 py-2 inline-flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0"
+                            >
+                                <LogOut className="h-3.5 w-3.5" />
+                                <span>Keluar</span>
+                            </Link>
                         </div>
                     </div>
                 </div>

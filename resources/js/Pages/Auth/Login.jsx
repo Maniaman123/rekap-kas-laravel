@@ -68,6 +68,16 @@ export default function Login({ status, canResetPassword }) {
 
             <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4 py-12 font-sans antialiased">
                 <div className="w-full max-w-md">
+                    {/* Top-level back navigation */}
+                    <div className="mb-6">
+                        <Link
+                            href={route().has('home') ? route('home') : '/'}
+                            className="text-slate-500 hover:text-[#1E3A8A] transition py-1 px-2 rounded-lg hover:bg-slate-100 inline-flex items-center gap-2 text-xs font-semibold min-h-[44px]"
+                        >
+                            <span aria-hidden="true">&larr;</span> Kembali ke Beranda
+                        </Link>
+                    </div>
+
                     {/* Brand mark */}
                     <div className="mb-8 flex flex-col items-center gap-3">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1E3A8A] shadow-md">

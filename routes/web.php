@@ -17,6 +17,10 @@ Route::get('/', function () {
     return Inertia::render('Welcome', [
         'auth' => ['user' => auth()->user()],
     ]);
+})->name('home');
+
+Route::get('/welcome', function () {
+    return redirect()->route('home');
 })->name('welcome');
 
 /*
