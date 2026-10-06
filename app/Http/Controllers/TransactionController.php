@@ -6,7 +6,7 @@ use App\Models\Transaction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Http\StreamedResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -99,7 +99,7 @@ class TransactionController extends Controller
      *
      * Route: GET /transactions/export  (role:bendahara middleware + controller gate)
      */
-    public function export(Request $request): StreamedResponse|Response
+    public function export(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         // Triple gate: middleware, role check, explicit abort
         if (auth()->user()->role !== 'bendahara') {
@@ -149,7 +149,7 @@ class TransactionController extends Controller
         // ------------------------------------------------------------------
         // FORMAT: csv  —  StreamedResponse with UTF-8 BOM (Excel-compatible)
         // ------------------------------------------------------------------
-        if ($request->format === 'csv') {
+        if ($request->query('format') === 'csv') {
             $filename = 'rekap-kas-xi-pplg2-' . now()->format('Ymd-His') . '.csv';
 
             $rows = $query->get(); // fetch once

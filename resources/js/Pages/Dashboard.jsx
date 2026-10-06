@@ -68,6 +68,19 @@ function useDebounce(fn, delay) {
     };
 }
 
+/**
+ * Build the export URL with active filter params appended.
+ * format: 'csv' | 'print'
+ * filters: { search, category, start_date, end_date }
+ */
+function buildExportUrl(format, filters = {}) {
+    const params = new URLSearchParams({ format });
+    Object.entries(filters).forEach(([k, v]) => {
+        if (v) params.set(k, v);
+    });
+    return `/transactions/export?${params.toString()}`;
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 /** Metric summary card */
