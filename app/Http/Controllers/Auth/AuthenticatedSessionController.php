@@ -70,6 +70,6 @@ class AuthenticatedSessionController extends Controller
     {
         return $user->isBendahara()
             ? redirect()->route('dashboard')
-            : redirect()->route('kas.index');
+            : redirect()->route('transactions.index');
     }
 }
