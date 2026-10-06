@@ -21,8 +21,10 @@ import {
     ArrowRight,
     CalendarDays,
     ChevronDown,
+    FileDown,
     LogOut,
     Plus,
+    Printer,
     Search,
     Trash2,
     TrendingDown,
@@ -544,16 +546,16 @@ function DeleteConfirmModal({ transaction, onClose }) {
 
 function FlashToast({ flash }) {
     const [visible, setVisible] = useState(false);
+    const message = flash?.success ?? flash?.error ?? null;
 
     useEffect(() => {
-        if (flash?.success || flash?.error) {
-            setVisible(true);
-            const t = setTimeout(() => setVisible(false), 4000);
-            return () => clearTimeout(t);
-        }
-    }, [flash]);
+        if (!message) return;
+        setVisible(true);
+        const t = setTimeout(() => setVisible(false), 4000);
+        return () => clearTimeout(t);
+    }, [message]); // depend on the message string, not the flash object reference
 
-    if (!visible || (!flash?.success && !flash?.error)) return null;
+    if (!visible || !message) return null;
 
     const isError = !!flash?.error;
 
@@ -567,7 +569,7 @@ function FlashToast({ flash }) {
                     : 'bg-[#1E3A8A] text-white ring-[#1e3a8a]/80'
             }`}
         >
-            {flash.success ?? flash.error}
+            {message}
             <button
                 type="button"
                 onClick={() => setVisible(false)}
@@ -576,6 +578,36 @@ function FlashToast({ flash }) {
             >
                 <X size={14} />
             </button>
+        </div>
+    );
+}
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+function EmptyState({ onAdd, hasFilters = false }) {
+    return (
+        <div role="status" className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#E0F2FE]">
+                <Wallet size={24} className="text-[#4B729F]" />
+            </div>
+            <h3 className="text-sm font-semibold text-slate-700">
+                {hasFilters ? 'Tidak ada hasil' : 'Belum ada transaksi'}
+            </h3>
+            <p className="mt-1 max-w-[24ch] text-xs text-slate-400 leading-relaxed">
+                {hasFilters
+                    ? 'Coba ubah kata kunci atau hapus filter yang aktif.'
+                    : 'Mulai dengan menambahkan transaksi pertama.'}
+            </p>
+            {!hasFilters && (
+                <button
+                    type="button"
+                    onClick={onAdd}
+                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#FACC15] px-4 py-2 text-xs font-bold text-[#1E3A8A] transition hover:bg-[#f5c400] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FACC15]"
+                >
+                    <Plus size={14} />
+                    Tambah Transaksi
+                </button>
+            )}
         </div>
     );
 }
@@ -619,6 +651,7 @@ export default function Dashboard({
             start_date: startDate,
             end_date:   endDate,
             ...overrides,
+            page:       1, // always reset to page 1 when any filter changes
         };
         // Strip empty values
         Object.keys(params).forEach((k) => {
@@ -830,18 +863,50 @@ export default function Dashboard({
                                 </button>
                             )}
 
-                            {/* Spacer pushes "Tambah" to the right */}
+                            {/* Spacer */}
                             <div className="flex-1" />
 
-                            {/* Primary action */}
-                            <button
-                                type="button"
-                                onClick={() => setShowAdd(true)}
-                                className="inline-flex items-center gap-2 rounded-xl bg-[#FACC15] px-4 py-2.5 text-sm font-bold text-[#1E3A8A] shadow-sm transition hover:bg-[#f5c400] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FACC15]"
-                            >
-                                <Plus size={15} strokeWidth={2.5} />
-                                Tambah Transaksi
-                            </button>
+                            {/* ── Export + Add action group ─────────────────── */}
+                            <div className="flex items-center gap-2">
+
+                                {/* CSV download — direct href, carries active filters */}
+                                <a
+                                    href={buildExportUrl('csv', { search, category, start_date: startDate, end_date: endDate })}
+                                    download
+                                    aria-label="Unduh CSV"
+                                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#4B729F] hover:bg-[#E0F2FE] hover:text-[#1E3A8A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B729F]"
+                                >
+                                    <FileDown size={14} strokeWidth={2} />
+                                    CSV
+                                </a>
+
+                                {/* Print report — opens in new tab, auto-triggers print dialog */}
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        window.open(
+                                            buildExportUrl('print', { search, category, start_date: startDate, end_date: endDate }),
+                                            '_blank',
+                                            'noopener,noreferrer'
+                                        )
+                                    }
+                                    aria-label="Cetak laporan PDF"
+                                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#4B729F] hover:bg-[#E0F2FE] hover:text-[#1E3A8A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B729F]"
+                                >
+                                    <Printer size={14} strokeWidth={2} />
+                                    Cetak
+                                </button>
+
+                                {/* Primary add action */}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAdd(true)}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-[#FACC15] px-4 py-2.5 text-sm font-bold text-[#1E3A8A] shadow-sm transition hover:bg-[#f5c400] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FACC15]"
+                                >
+                                    <Plus size={15} strokeWidth={2.5} />
+                                    Tambah
+                                </button>
+                            </div>
                         </div>
                     </section>
 
@@ -886,7 +951,10 @@ export default function Dashboard({
                                         {txList.length === 0 ? (
                                             <tr>
                                                 <td colSpan={6}>
-                                                    <EmptyState onAdd={() => setShowAdd(true)} />
+                                                    <EmptyState
+                                                        onAdd={() => setShowAdd(true)}
+                                                        hasFilters={!!hasActiveFilters}
+                                                    />
                                                 </td>
                                             </tr>
                                         ) : (
@@ -965,7 +1033,7 @@ export default function Dashboard({
                                 {/* Mobile card list */}
                                 <ul className="divide-y divide-slate-100 sm:hidden">
                                     {txList.length === 0 ? (
-                                        <li><EmptyState onAdd={() => setShowAdd(true)} /></li>
+                                        <li><EmptyState onAdd={() => setShowAdd(true)} hasFilters={!!hasActiveFilters} /></li>
                                     ) : (
                                         txList.map((tx) => (
                                             <li
@@ -999,7 +1067,7 @@ export default function Dashboard({
                                                         type="button"
                                                         onClick={() => setDeleteTarget(tx)}
                                                         aria-label={`Hapus transaksi ${tx.description || tx.category}`}
-                                                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                                                        className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
                                                     >
                                                         <Trash2 size={14} />
                                                     </button>
@@ -1037,31 +1105,7 @@ export default function Dashboard({
     );
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
 
-function EmptyState({ onAdd }) {
-    return (
-        <div role="status" className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#E0F2FE]">
-                <Wallet size={24} className="text-[#4B729F]" />
-            </div>
-            <h3 className="text-sm font-semibold text-slate-700">Belum ada transaksi</h3>
-            <p className="mt-1 text-xs text-slate-400">
-                Mulai dengan menambahkan transaksi pertama.
-            </p>
-            <button
-                type="button"
-                onClick={onAdd}
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#FACC15] px-4 py-2 text-xs font-bold text-[#1E3A8A] transition hover:bg-[#f5c400] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FACC15]"
-            >
-                <Plus size={14} />
-                Tambah Transaksi
-            </button>
-        </div>
-    );
-}
-
-// ─── Pagination ───────────────────────────────────────────────────────────────
 
 function Pagination({ meta }) {
     function goTo(url) {

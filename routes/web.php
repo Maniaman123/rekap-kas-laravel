@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\KasController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
@@ -41,8 +40,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/transactions', [TransactionController::class, 'index'])
         ->name('transactions.index');
 
-    // Mutations — bendahara only (middleware + controller double-gate)
+    // Mutations + export — bendahara only (middleware + controller double-gate)
     Route::middleware('role:bendahara')->group(function () {
+        // Export MUST be registered before the /{transaction} wildcard
+        Route::get('/transactions/export', [TransactionController::class, 'export'])
+            ->name('transactions.export');
+
         Route::post('/transactions', [TransactionController::class, 'store'])
             ->name('transactions.store');
 
@@ -51,28 +54,15 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-/*
-|--------------------------------------------------------------------------
-| Legacy KasController routes (kept for backward-compatibility)
-|--------------------------------------------------------------------------
-*/
-Route::get('/kas', [KasController::class, 'index'])
-    ->middleware(['auth'])
-    ->name('kas.index');
-
-Route::middleware(['auth', 'role:bendahara'])->group(function () {
-    Route::post('/kas', [KasController::class, 'store'])->name('kas.store');
-    Route::delete('/kas/{id}', [KasController::class, 'destroy'])->name('kas.destroy');
-});
 
 /*
 |--------------------------------------------------------------------------
 | Treasurer dashboard
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'role:bendahara'])->name('dashboard');
+Route::get('/dashboard', [TransactionController::class, 'index'])
+    ->middleware(['auth', 'role:bendahara'])
+    ->name('dashboard');
 
 /*
 |--------------------------------------------------------------------------

@@ -15,7 +15,7 @@
  * Security guarantee: ZERO create / update / delete controls exist in this file.
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
@@ -348,7 +348,15 @@ export default function KasSiswa({
     const [startDate, setStartDate] = useState(filters.start_date ?? '');
     const [endDate,   setEndDate]   = useState(filters.end_date   ?? '');
 
-    const [flashVisible, setFlashVisible] = useState(true);
+    const [flashVisible, setFlashVisible] = useState(false);
+    const flashMessage = flash?.success ?? null;
+
+    useEffect(() => {
+        if (!flashMessage) return;
+        setFlashVisible(true);
+        const t = setTimeout(() => setFlashVisible(false), 4000);
+        return () => clearTimeout(t);
+    }, [flashMessage]); // re-triggers correctly each time a new message arrives
 
     const txList         = transactions?.data ?? [];
     const hasActiveFilters = search || activecat || startDate || endDate;
@@ -390,7 +398,7 @@ export default function KasSiswa({
 
     return (
         <>
-            <Head title={`Kas Kelas — XI PPLG 2`} />
+            <Head title="Kas Kelas — XI PPLG 2" />
 
             {/* Entrance animation */}
             <style>{`
@@ -476,7 +484,9 @@ export default function KasSiswa({
                     <section aria-label="Saldo Kas" className="ks-enter ks-enter-d1 mb-4">
 
                         {/* Main balance card */}
-                        <div className="relative overflow-hidden rounded-2xl bg-[#1E3A8A] px-5 py-6 shadow-lg shadow-[#1E3A8A]/20">
+                        <div className="relative overflow-hidden rounded-2xl bg-[#1E3A8A] px-5 py-6 shadow-lg shadow-[#1E3A8A]/20"
+                            style={sisaSaldo < 0 ? { background: 'linear-gradient(135deg,#7f1d1d,#991b1b)' } : {}}
+                        >
 
                             {/* Decorative rings — subtle, not distracting */}
                             <div
@@ -501,6 +511,12 @@ export default function KasSiswa({
                                 <p className="mt-3 font-mono tabular-nums text-[2rem] font-extrabold leading-none tracking-tight text-white sm:text-4xl">
                                     {formatRupiah(sisaSaldo)}
                                 </p>
+
+                                {sisaSaldo < 0 && (
+                                    <p className="mt-1 inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-rose-200">
+                                        ⚠ Saldo defisit — pengeluaran melebihi pemasukan
+                                    </p>
+                                )}
 
                                 <p className="mt-2 flex items-center gap-1 text-[11px] text-white/50">
                                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#FACC15]" />
@@ -730,13 +746,13 @@ export default function KasSiswa({
             </div>
 
             {/* ── FLASH TOAST ──────────────────────────────────────────────── */}
-            {flash?.success && flashVisible && (
+            {flashVisible && flashMessage && (
                 <div
                     role="status"
                     aria-live="polite"
                     className="fixed bottom-5 left-4 right-4 z-50 mx-auto flex max-w-sm items-center gap-3 rounded-xl bg-[#1E3A8A] px-4 py-3 text-sm font-semibold text-white shadow-lg sm:left-auto sm:right-6 sm:max-w-xs"
                 >
-                    <span className="flex-1 text-xs">{flash.success}</span>
+                    <span className="flex-1 text-xs">{flashMessage}</span>
                     <button
                         type="button"
                         onClick={() => setFlashVisible(false)}

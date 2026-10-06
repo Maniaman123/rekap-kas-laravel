@@ -51,7 +51,8 @@ class RegisteredUserController extends Controller
                         return; // secret_key is irrelevant for pelajar
                     }
 
-                    $expected = env('BENDAHARA_SECRET_KEY');
+                    // Use config() — env() returns null when config is cached in production.
+                    $expected = config('app.bendahara_secret_key', env('BENDAHARA_SECRET_KEY'));
 
                     if (empty($expected)) {
                         $fail('Kunci bendahara belum dikonfigurasi di server. Hubungi administrator.');
