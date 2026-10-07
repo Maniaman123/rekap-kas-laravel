@@ -14,8 +14,25 @@ use Inertia\Inertia;
 | see the Welcome landing page.
 */
 Route::get('/', function () {
+    $metrics = \App\Models\Transaction::query()
+        ->selectRaw("
+            COALESCE(SUM(CASE WHEN type = 'masuk'  THEN amount ELSE 0 END), 0) AS total_masuk,
+            COALESCE(SUM(CASE WHEN type = 'keluar' THEN amount ELSE 0 END), 0) AS total_keluar,
+            COUNT(*) AS total_transaksi
+        ")
+        ->first();
+
+    $totalMasuk  = (int) ($metrics->total_masuk  ?? 0);
+    $totalKeluar = (int) ($metrics->total_keluar  ?? 0);
+
     return Inertia::render('Welcome', [
-        'auth' => ['user' => auth()->user()],
+        'auth'       => ['user' => auth()->user()],
+        'kasSummary' => [
+            'totalSaldo'       => $totalMasuk - $totalKeluar,
+            'totalMasuk'       => $totalMasuk,
+            'totalKeluar'      => $totalKeluar,
+            'totalTransaksi'   => (int) ($metrics->total_transaksi ?? 0),
+        ],
     ]);
 })->name('home');
 

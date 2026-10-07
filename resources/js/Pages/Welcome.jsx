@@ -18,12 +18,16 @@ import {
 // brand.ice   = #E0F2FE
 // brand.bg    = #F8FAFC
 
-// ─── Static data — swap { label, value, sub } for real Inertia props later ───
-const STATS = [
-    { label: 'Total Kas Terkumpul', value: 'Rp 4.250.000', sub: 'Sejak awal semester' },
-    { label: 'Jumlah Transaksi',    value: '128',           sub: 'Pemasukan & pengeluaran' },
-    { label: 'Anggota Aktif',       value: '36',            sub: 'Dari 36 siswa kelas' },
-];
+// ─── Utilities ───────────────────────────────────────────────────────────────
+
+/** Format whole-Rupiah integer → "Rp 1.250.000" — safe on 0 / null / undefined */
+const formatRupiah = (n) =>
+    new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(n ?? 0);
 
 const FEATURES = [
     {
@@ -135,7 +139,14 @@ function StatRow({ label, value, isNumeric }) {
 /**
  * @param {{ auth?: { user?: object } }} props
  */
-export default function Welcome({ auth }) {
+export default function Welcome({ auth, kasSummary = {} }) {
+    const kas = {
+        totalSaldo:     kasSummary.totalSaldo     ?? 0,
+        totalMasuk:     kasSummary.totalMasuk     ?? 0,
+        totalKeluar:    kasSummary.totalKeluar    ?? 0,
+        totalTransaksi: kasSummary.totalTransaksi ?? 0,
+    };
+
     const [mobileOpen, setMobileOpen] = useState(false);
 
     return (
@@ -196,7 +207,7 @@ export default function Welcome({ auth }) {
                         <div className="hidden items-center gap-2 md:flex">
                             {auth?.user ? (
                                 <Link
-                                    href={route('kas.index')}
+                                    href={route('transactions.index')}
                                     className="flex items-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-brand-navy/90 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
                                 >
                                     Buka Dashboard <ArrowRight size={14} />
@@ -252,7 +263,7 @@ export default function Welcome({ auth }) {
                             </nav>
                             {auth?.user ? (
                                 <Link
-                                    href={route('kas.index')}
+                                    href={route('transactions.index')}
                                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white"
                                 >
                                     Buka Dashboard <ArrowRight size={14} />
@@ -340,19 +351,15 @@ export default function Welcome({ auth }) {
 
                                     {/* Stats */}
                                     <div className="flex flex-col gap-2.5">
-                                        {STATS.map((s) => (
-                                            <StatRow
-                                                key={s.label}
-                                                label={s.label}
-                                                value={s.value}
-                                                isNumeric
-                                            />
-                                        ))}
+                                        <StatRow label="Saldo Kas" value={formatRupiah(kas.totalSaldo)} isNumeric />
+                                        <StatRow label="Total Pemasukan" value={formatRupiah(kas.totalMasuk)} isNumeric />
+                                        <StatRow label="Total Pengeluaran" value={formatRupiah(kas.totalKeluar)} isNumeric />
+                                        <StatRow label="Jumlah Transaksi" value={`${kas.totalTransaksi} transaksi`} />
                                     </div>
 
                                     {/* Card footer */}
                                     <div className="mt-4 flex items-center justify-between border-t border-slate-200/60 pt-4">
-                                        <span className="text-xs text-slate-400">Terakhir diperbarui: baru saja</span>
+                                        <span className="text-xs text-slate-400">Diperbarui real-time</span>
                                         <Link
                                             href={route('login')}
                                             className="flex items-center gap-1 text-xs font-semibold text-brand-blue transition-colors hover:text-brand-navy"
