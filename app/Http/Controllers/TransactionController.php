@@ -258,6 +258,41 @@ class TransactionController extends Controller
     }
 
     // -------------------------------------------------------------------------
+    // update
+    // -------------------------------------------------------------------------
+
+    /**
+     * Update an existing cash transaction.
+     *
+     * Only users with role 'bendahara' may reach this route (enforced at the
+     * routing layer via the 'role:bendahara' middleware), with double-gate check.
+     */
+    public function update(Request $request, Transaction $transaction): RedirectResponse
+    {
+        if (auth()->user()->role !== 'bendahara') {
+            abort(403, 'Hanya bendahara yang dapat memperbarui transaksi.');
+        }
+
+        $validated = $request->validate([
+            'type'             => ['required', 'in:masuk,keluar'],
+            'category'         => ['required', 'string', 'in:' . implode(',', self::CATEGORIES)],
+            'amount'           => ['required', 'integer', 'min:1'],
+            'transaction_date' => ['required', 'date'],
+            'description'      => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $transaction->update([
+            'type'             => $validated['type'],
+            'category'         => $validated['category'],
+            'amount'           => (int) $validated['amount'],
+            'transaction_date' => $validated['transaction_date'],
+            'description'      => $validated['description'] ?? null,
+        ]);
+
+        return redirect()->back()->with('success', 'Transaksi berhasil diperbarui.');
+    }
+
+    // -------------------------------------------------------------------------
     // destroy
     // -------------------------------------------------------------------------
 

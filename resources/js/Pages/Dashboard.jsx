@@ -20,9 +20,11 @@ import {
     ArrowLeft,
     ArrowRight,
     CalendarDays,
+    Check,
     ChevronDown,
     FileDown,
     LogOut,
+    Pencil,
     Plus,
     Printer,
     Search,
@@ -419,6 +421,286 @@ function TambahTransaksiModal({ open, onClose, categories }) {
     );
 }
 
+// ─── Modal: Edit Transaksi ────────────────────────────────────────────────────
+
+function EditTransaksiModal({ transaction, onClose, categories }) {
+    const open = transaction !== null;
+    const closeRef = useRef(null);
+
+    const { data, setData, put, processing, errors, reset } = useForm({
+        type: 'masuk',
+        category: '',
+        amount: '',
+        transaction_date: '',
+        description: '',
+    });
+
+    const [amountDisplay, setAmountDisplay] = useState('');
+
+    useEffect(() => {
+        if (transaction) {
+            const rawDate = typeof transaction.transaction_date === 'string'
+                ? transaction.transaction_date.substring(0, 10)
+                : '';
+            const num = parseInt(transaction.amount, 10) || 0;
+
+            setData({
+                type: transaction.type || 'masuk',
+                category: transaction.category || '',
+                amount: String(num || ''),
+                transaction_date: rawDate,
+                description: transaction.description || '',
+            });
+            setAmountDisplay(num === 0 ? '' : num.toLocaleString('id-ID'));
+        }
+    }, [transaction]);
+
+    function handleAmountChange(e) {
+        const raw = e.target.value.replace(/\D/g, '');
+        const num = parseInt(raw, 10) || 0;
+        setAmountDisplay(num === 0 ? '' : num.toLocaleString('id-ID'));
+        setData('amount', num === 0 ? '' : String(num));
+    }
+
+    function handleSubmit(e) {
+        e.preventDefault();
+        if (!transaction) return;
+        put(route('transactions.update', transaction.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                reset();
+                setAmountDisplay('');
+                onClose();
+            },
+        });
+    }
+
+    function handleClose() {
+        reset();
+        setAmountDisplay('');
+        onClose();
+    }
+
+    return (
+        <Transition appear show={open} as={Fragment}>
+            <Dialog
+                as="div"
+                className="relative z-50"
+                onClose={handleClose}
+                initialFocus={closeRef}
+            >
+                {/* Backdrop */}
+                <Transition.Child
+                    as={Fragment}
+                    enter="ease-out duration-200"
+                    enterFrom="opacity-0"
+                    enterTo="opacity-100"
+                    leave="ease-in duration-150"
+                    leaveFrom="opacity-100"
+                    leaveTo="opacity-0"
+                >
+                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" aria-hidden="true" />
+                </Transition.Child>
+
+                {/* Panel */}
+                <div className="fixed inset-0 overflow-y-auto">
+                    <div className="flex min-h-full items-end justify-center p-0 sm:items-center sm:p-4">
+                        <Transition.Child
+                            as={Fragment}
+                            enter="ease-out duration-200"
+                            enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                            enterTo="opacity-100 translate-y-0 sm:scale-100"
+                            leave="ease-in duration-150"
+                            leaveFrom="opacity-100 translate-y-0 sm:scale-100"
+                            leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                        >
+                            <Dialog.Panel className="w-full overflow-hidden rounded-t-2xl bg-white shadow-xl ring-1 ring-slate-200/80 sm:max-w-lg sm:rounded-2xl">
+                                {/* Modal header */}
+                                <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                                            <Pencil size={15} />
+                                        </div>
+                                        <Dialog.Title className="text-[15px] font-bold text-slate-900">
+                                            Edit Transaksi
+                                        </Dialog.Title>
+                                    </div>
+                                    <button
+                                        ref={closeRef}
+                                        type="button"
+                                        onClick={handleClose}
+                                        aria-label="Tutup modal"
+                                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+
+                                <form onSubmit={handleSubmit} noValidate>
+                                    <div className="space-y-5 px-6 py-5">
+
+                                        {/* Type toggle */}
+                                        <fieldset>
+                                            <legend className="mb-1.5 text-xs font-semibold text-slate-700">
+                                                Jenis Transaksi <span className="text-rose-500">*</span>
+                                            </legend>
+                                            <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1" role="group">
+                                                {[
+                                                    { value: 'masuk',  label: 'Pemasukan',   color: 'text-emerald-700 bg-white shadow-sm ring-1 ring-emerald-200/60' },
+                                                    { value: 'keluar', label: 'Pengeluaran', color: 'text-rose-600 bg-white shadow-sm ring-1 ring-rose-200/60' },
+                                                ].map(({ value, label, color }) => (
+                                                    <button
+                                                        key={value}
+                                                        type="button"
+                                                        role="radio"
+                                                        aria-checked={data.type === value}
+                                                        onClick={() => setData('type', value)}
+                                                        className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue ${
+                                                            data.type === value
+                                                                ? color
+                                                                : 'text-slate-500 hover:text-slate-700'
+                                                        }`}
+                                                    >
+                                                        {label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <FieldError message={errors.type} />
+                                        </fieldset>
+
+                                        {/* Category */}
+                                        <div>
+                                            <label
+                                                htmlFor="edit-modal-category"
+                                                className="mb-1.5 block text-xs font-semibold text-slate-700"
+                                            >
+                                                Kategori <span className="text-rose-500">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <select
+                                                    id="edit-modal-category"
+                                                    value={data.category}
+                                                    onChange={(e) => setData('category', e.target.value)}
+                                                    className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-3.5 pr-9 text-sm text-slate-900 shadow-sm transition focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                                                >
+                                                    <option value="">Pilih kategori…</option>
+                                                    {categories.map((c) => (
+                                                        <option key={c} value={c}>{c}</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown
+                                                    size={14}
+                                                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                                                />
+                                            </div>
+                                            <FieldError message={errors.category} />
+                                        </div>
+
+                                        {/* Amount */}
+                                        <div>
+                                            <label
+                                                htmlFor="edit-modal-amount"
+                                                className="mb-1.5 block text-xs font-semibold text-slate-700"
+                                            >
+                                                Jumlah (Rp) <span className="text-rose-500">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-mono text-sm font-medium text-slate-400">
+                                                    Rp
+                                                </span>
+                                                <input
+                                                    id="edit-modal-amount"
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    autoComplete="off"
+                                                    placeholder="0"
+                                                    value={amountDisplay}
+                                                    onChange={handleAmountChange}
+                                                    aria-invalid={!!errors.amount}
+                                                    className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3.5 font-mono tabular-nums text-sm text-slate-900 shadow-sm transition focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                                                />
+                                            </div>
+                                            <FieldError message={errors.amount} />
+                                        </div>
+
+                                        {/* Date */}
+                                        <div>
+                                            <label
+                                                htmlFor="edit-modal-date"
+                                                className="mb-1.5 block text-xs font-semibold text-slate-700"
+                                            >
+                                                Tanggal <span className="text-rose-500">*</span>
+                                            </label>
+                                            <input
+                                                id="edit-modal-date"
+                                                type="date"
+                                                value={data.transaction_date}
+                                                onChange={(e) => setData('transaction_date', e.target.value)}
+                                                aria-invalid={!!errors.transaction_date}
+                                                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-3.5 text-sm text-slate-900 shadow-sm transition focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                                            />
+                                            <FieldError message={errors.transaction_date} />
+                                        </div>
+
+                                        {/* Description */}
+                                        <div>
+                                            <label
+                                                htmlFor="edit-modal-desc"
+                                                className="mb-1.5 block text-xs font-semibold text-slate-700"
+                                            >
+                                                Keterangan{' '}
+                                                <span className="font-normal text-slate-400">(opsional)</span>
+                                            </label>
+                                            <textarea
+                                                id="edit-modal-desc"
+                                                rows={2}
+                                                maxLength={255}
+                                                placeholder="Deskripsi singkat transaksi…"
+                                                value={data.description}
+                                                onChange={(e) => setData('description', e.target.value)}
+                                                className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                                            />
+                                            <FieldError message={errors.description} />
+                                        </div>
+                                    </div>
+
+                                    {/* Modal footer */}
+                                    <div className="flex justify-end gap-2.5 border-t border-slate-100 px-6 py-4">
+                                        <button
+                                            type="button"
+                                            onClick={handleClose}
+                                            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
+                                        >
+                                            Batal
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={processing}
+                                            className="inline-flex items-center gap-2 rounded-xl bg-[#1E3A8A] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#1e3a8a]/90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
+                                        >
+                                            {processing ? (
+                                                <>
+                                                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                                    Menyimpan…
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Check size={15} />
+                                                    Simpan Perubahan
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            </Dialog.Panel>
+                        </Transition.Child>
+                    </div>
+                </div>
+            </Dialog>
+        </Transition>
+    );
+}
+
 // ─── Modal: Delete Confirmation ───────────────────────────────────────────────
 
 function DeleteConfirmModal({ transaction, onClose }) {
@@ -641,6 +923,7 @@ export default function Dashboard({
 
     // Modal state
     const [showAdd, setShowAdd]           = useState(false);
+    const [editTarget, setEditTarget]     = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     // Filter state — mirrors URL query params
@@ -947,13 +1230,13 @@ export default function Dashboard({
                                 <table className="hidden w-full border-collapse text-sm sm:table" role="grid">
                                     <thead>
                                         <tr className="border-b border-[#E0F2FE] bg-[#E0F2FE]/40">
-                                            {['Tanggal', 'Kategori', 'Keterangan', 'Jenis', 'Jumlah', ''].map((h) => (
+                                            {['Tanggal', 'Kategori', 'Keterangan', 'Jenis', 'Jumlah', 'Aksi'].map((h) => (
                                                 <th
                                                     key={h}
                                                     scope="col"
                                                     className={`px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-[#1E3A8A] ${
                                                         h === 'Jumlah' ? 'text-right' : ''
-                                                    } ${h === '' ? 'w-14' : ''}`}
+                                                    } ${h === 'Aksi' ? 'w-24 text-right pr-6' : ''}`}
                                                 >
                                                     {h}
                                                 </th>
@@ -1026,16 +1309,28 @@ export default function Dashboard({
                                                         </span>
                                                     </td>
 
-                                                    {/* Delete action */}
-                                                    <td className="px-5 py-3.5">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setDeleteTarget(tx)}
-                                                            aria-label={`Hapus transaksi ${tx.description || tx.category}`}
-                                                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 opacity-0 transition-all hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
+                                                    {/* Actions (Edit & Delete) */}
+                                                    <td className="whitespace-nowrap px-5 py-3.5 text-right">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditTarget(tx)}
+                                                                aria-label={`Edit transaksi ${tx.description || tx.category}`}
+                                                                title="Edit transaksi"
+                                                                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                                            >
+                                                                <Pencil size={14} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setDeleteTarget(tx)}
+                                                                aria-label={`Hapus transaksi ${tx.description || tx.category}`}
+                                                                title="Hapus transaksi"
+                                                                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))
@@ -1068,9 +1363,9 @@ export default function Dashboard({
                                                         </p>
                                                     )}
                                                 </div>
-                                                <div className="flex shrink-0 items-center gap-2">
+                                                <div className="flex shrink-0 items-center gap-1.5">
                                                     <span
-                                                        className={`font-mono tabular-nums text-sm font-bold ${
+                                                        className={`font-mono tabular-nums text-sm font-bold mr-1 ${
                                                             tx.type === 'masuk' ? 'text-emerald-600' : 'text-rose-500'
                                                         }`}
                                                     >
@@ -1078,11 +1373,21 @@ export default function Dashboard({
                                                     </span>
                                                     <button
                                                         type="button"
+                                                        onClick={() => setEditTarget(tx)}
+                                                        aria-label={`Edit transaksi ${tx.description || tx.category}`}
+                                                        title="Edit transaksi"
+                                                        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                                    >
+                                                        <Pencil size={15} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
                                                         onClick={() => setDeleteTarget(tx)}
                                                         aria-label={`Hapus transaksi ${tx.description || tx.category}`}
-                                                        className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                                                        title="Hapus transaksi"
+                                                        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
                                                     >
-                                                        <Trash2 size={14} />
+                                                        <Trash2 size={15} />
                                                     </button>
                                                 </div>
                                             </li>
@@ -1104,6 +1409,12 @@ export default function Dashboard({
             <TambahTransaksiModal
                 open={showAdd}
                 onClose={() => setShowAdd(false)}
+                categories={categories}
+            />
+
+            <EditTransaksiModal
+                transaction={editTarget}
+                onClose={() => setEditTarget(null)}
                 categories={categories}
             />
 
