@@ -3,18 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Transaction;
+use App\Models\TransactionEdit;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class TransactionController extends Controller
 {
-    // Allowed category values (single source of truth)
-    private const CATEGORIES = ['Kas Wajib', 'Konsumsi', 'ATK', 'Kegiatan', 'Lainnya'];
-
     // -------------------------------------------------------------------------
     // index
     // -------------------------------------------------------------------------
@@ -22,15 +20,42 @@ class TransactionController extends Controller
     /**
      * Display the cash-ledger page with filters, aggregations, and pagination.
      *
-     * Accessible to all authenticated users; the Inertia component differs
-     * between 'bendahara' and 'pelajar' roles.
+     * Supports ?tab=active (default) and ?tab=trash (bendahara only).
+     * Summary cards ALWAYS reflect active (non-deleted) transactions only.
      */
     public function index(Request $request): InertiaResponse
     {
+        $tab = $request->query('tab', 'active');
+
         // ------------------------------------------------------------------
-        // Build the filterable base query
+        // ALWAYS-ACTIVE aggregations for summary cards (excludes soft-deleted)
         // ------------------------------------------------------------------
-        $query = Transaction::with('user')
+        $summaryAgg = Transaction::query()
+            ->whereNull('deleted_at')
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN type = 'masuk'  THEN amount ELSE 0 END), 0) AS total_masuk,
+                COALESCE(SUM(CASE WHEN type = 'keluar' THEN amount ELSE 0 END), 0) AS total_keluar
+            ")
+            ->first();
+
+        $totalMasuk  = (int) $summaryAgg->total_masuk;
+        $totalKeluar = (int) $summaryAgg->total_keluar;
+        $sisaSaldo   = $totalMasuk - $totalKeluar;
+
+        // ------------------------------------------------------------------
+        // Build filterable base query (tab-aware)
+        // ------------------------------------------------------------------
+        $isBendahara = auth()->user()->isBendahara();
+
+        if ($tab === 'trash' && $isBendahara) {
+            $baseQuery = Transaction::onlyTrashed()
+                ->with(['user:id,name', 'edits.user:id,name']);
+        } else {
+            $baseQuery = Transaction::query()
+                ->with(['user:id,name', 'edits.user:id,name']);
+        }
+
+        $baseQuery
             ->when($request->filled('search'), function ($q) use ($request) {
                 $term = '%' . $request->search . '%';
                 $q->where(function ($inner) use ($term) {
@@ -49,24 +74,9 @@ class TransactionController extends Controller
             );
 
         // ------------------------------------------------------------------
-        // Aggregations — run on the FILTERED dataset via SQL (not PHP)
-        // Uses the composite index (transaction_date, type) for performance.
-        // ------------------------------------------------------------------
-        $aggregates = (clone $query)
-            ->selectRaw("
-                COALESCE(SUM(CASE WHEN type = 'masuk'  THEN amount ELSE 0 END), 0) AS total_masuk,
-                COALESCE(SUM(CASE WHEN type = 'keluar' THEN amount ELSE 0 END), 0) AS total_keluar
-            ")
-            ->first();
-
-        $totalMasuk  = (int) $aggregates->total_masuk;
-        $totalKeluar = (int) $aggregates->total_keluar;
-        $sisaSaldo   = $totalMasuk - $totalKeluar;
-
-        // ------------------------------------------------------------------
         // Paginated transaction list
         // ------------------------------------------------------------------
-        $transactions = $query
+        $transactions = $baseQuery
             ->orderBy('transaction_date', 'desc')
             ->orderBy('id', 'desc')
             ->paginate(15)
@@ -75,16 +85,27 @@ class TransactionController extends Controller
         // ------------------------------------------------------------------
         // Role-based view routing
         // ------------------------------------------------------------------
-        $component = auth()->user()->isBendahara() ? 'Dashboard' : 'KasSiswa';
+        $component = $isBendahara ? 'Dashboard' : 'KasSiswa';
 
-        return Inertia::render($component, [
+        $props = [
             'transactions' => $transactions,
             'totalMasuk'   => $totalMasuk,
             'totalKeluar'  => $totalKeluar,
             'sisaSaldo'    => $sisaSaldo,
-            'categories'   => self::CATEGORIES,
-            'filters'      => $request->only(['search', 'category', 'start_date', 'end_date']),
-        ]);
+            'categories'   => Transaction::CATEGORIES,
+            'filters'      => $request->only(['search', 'category', 'start_date', 'end_date', 'tab']),
+            'activeTab'    => $tab,
+        ];
+
+        // Pass student list for handover modal (bendahara only)
+        if ($isBendahara) {
+            $props['students'] = User::where('role', 'pelajar')
+                ->select('id', 'name', 'email')
+                ->orderBy('name')
+                ->get();
+        }
+
+        return Inertia::render($component, $props);
     }
 
     // -------------------------------------------------------------------------
@@ -94,26 +115,18 @@ class TransactionController extends Controller
     /**
      * Export filtered transactions as CSV or printable HTML.
      *
-     * Same filter params as index(): search, category, start_date, end_date.
-     * Add ?format=csv for a CSV download; default returns a printable HTML page.
-     *
      * Route: GET /transactions/export  (role:bendahara middleware + controller gate)
      */
     public function export(Request $request): \Symfony\Component\HttpFoundation\Response
     {
-        // Triple gate: middleware, role check, explicit abort
         if (auth()->user()->role !== 'bendahara') {
             abort(403, 'Hanya bendahara yang dapat mengekspor laporan.');
         }
 
-        // Validate format param — only 'csv' or 'print' accepted
         $request->validate([
             'format' => ['required', 'in:csv,print'],
         ]);
 
-        // ------------------------------------------------------------------
-        // Build the same filterable query as index() — no pagination
-        // ------------------------------------------------------------------
         $query = Transaction::with('user')
             ->when($request->filled('search'), function ($q) use ($request) {
                 $term = '%' . $request->search . '%';
@@ -134,7 +147,6 @@ class TransactionController extends Controller
             ->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc');
 
-        // SQL aggregates — computed before ->get() to avoid loading all rows twice
         $aggregates = (clone $query)
             ->selectRaw("
                 COALESCE(SUM(CASE WHEN type = 'masuk'  THEN amount ELSE 0 END), 0) AS total_masuk,
@@ -146,26 +158,14 @@ class TransactionController extends Controller
         $totalKeluar = (int) $aggregates->total_keluar;
         $sisaSaldo   = $totalMasuk - $totalKeluar;
 
-        // ------------------------------------------------------------------
-        // FORMAT: csv  —  StreamedResponse with UTF-8 BOM (Excel-compatible)
-        // ------------------------------------------------------------------
         if ($request->query('format') === 'csv') {
             $filename = 'rekap-kas-xi-pplg2-' . now()->format('Ymd-His') . '.csv';
-
-            $rows = $query->get(); // fetch once
+            $rows     = $query->get();
 
             return response()->stream(function () use ($rows, $totalMasuk, $totalKeluar, $sisaSaldo): void {
                 $handle = fopen('php://output', 'w');
-
-                // UTF-8 BOM — ensures Excel opens without mojibake
                 fwrite($handle, "\xEF\xBB\xBF");
-
-                // Header row
-                fputcsv($handle, [
-                    'No', 'Tanggal', 'Tipe', 'Kategori', 'Nominal (Rp)', 'Keterangan', 'Dicatat Oleh',
-                ]);
-
-                // Data rows
+                fputcsv($handle, ['No', 'Tanggal', 'Tipe', 'Kategori', 'Nominal (Rp)', 'Keterangan', 'Dicatat Oleh']);
                 foreach ($rows as $i => $tx) {
                     fputcsv($handle, [
                         $i + 1,
@@ -177,13 +177,10 @@ class TransactionController extends Controller
                         $tx->user?->name ?? '',
                     ]);
                 }
-
-                // Summary footer
                 fputcsv($handle, []);
                 fputcsv($handle, ['', '', '', '', 'Total Pemasukan', $totalMasuk, '']);
                 fputcsv($handle, ['', '', '', '', 'Total Pengeluaran', $totalKeluar, '']);
                 fputcsv($handle, ['', '', '', '', 'Saldo Kas', $sisaSaldo, '']);
-
                 fclose($handle);
             }, 200, [
                 'Content-Type'        => 'text/csv; charset=UTF-8',
@@ -193,11 +190,7 @@ class TransactionController extends Controller
             ]);
         }
 
-        // ------------------------------------------------------------------
-        // FORMAT: print  —  Blade view, auto-triggers window.print()
-        // ------------------------------------------------------------------
-        $rows = $query->get();
-
+        $rows        = $query->get();
         $filterLabels = collect([
             $request->filled('search')     ? "Kata kunci: \"{$request->search}\""  : null,
             $request->filled('category')   ? "Kategori: {$request->category}"      : null,
@@ -224,13 +217,6 @@ class TransactionController extends Controller
     // store
     // -------------------------------------------------------------------------
 
-    /**
-     * Persist a new cash transaction.
-     *
-     * Only users with role 'bendahara' may reach this route (enforced at the
-     * routing layer via the 'role:bendahara' middleware), but we perform a
-     * second gate check here for defence-in-depth.
-     */
     public function store(Request $request): RedirectResponse
     {
         if (auth()->user()->role !== 'bendahara') {
@@ -239,7 +225,7 @@ class TransactionController extends Controller
 
         $validated = $request->validate([
             'type'             => ['required', 'in:masuk,keluar'],
-            'category'         => ['required', 'string', 'in:Kas Wajib,Konsumsi,ATK,Kegiatan,Lainnya'],
+            'category'         => ['required', 'string', 'in:' . implode(',', Transaction::CATEGORIES)],
             'amount'           => ['required', 'integer', 'min:1'],
             'transaction_date' => ['required', 'date'],
             'description'      => ['nullable', 'string', 'max:255'],
@@ -261,12 +247,6 @@ class TransactionController extends Controller
     // update
     // -------------------------------------------------------------------------
 
-    /**
-     * Update an existing cash transaction.
-     *
-     * Only users with role 'bendahara' may reach this route (enforced at the
-     * routing layer via the 'role:bendahara' middleware), with double-gate check.
-     */
     public function update(Request $request, Transaction $transaction): RedirectResponse
     {
         if (auth()->user()->role !== 'bendahara') {
@@ -275,41 +255,100 @@ class TransactionController extends Controller
 
         $validated = $request->validate([
             'type'             => ['required', 'in:masuk,keluar'],
-            'category'         => ['required', 'string', 'in:' . implode(',', self::CATEGORIES)],
+            'category'         => ['required', 'string', 'in:' . implode(',', Transaction::CATEGORIES)],
             'amount'           => ['required', 'integer', 'min:1'],
             'transaction_date' => ['required', 'date'],
             'description'      => ['nullable', 'string', 'max:255'],
+            'edit_reason'      => ['nullable', 'string', 'max:150'],
         ]);
 
-        $transaction->update([
-            'type'             => $validated['type'],
-            'category'         => $validated['category'],
-            'amount'           => (int) $validated['amount'],
-            'transaction_date' => $validated['transaction_date'],
-            'description'      => $validated['description'] ?? null,
-        ]);
+        DB::transaction(function () use ($validated, $transaction): void {
+            // Record audit BEFORE applying changes
+            TransactionEdit::create([
+                'transaction_id'  => $transaction->id,
+                'user_id'         => auth()->id(),
+                'old_amount'      => $transaction->amount,
+                'new_amount'      => (int) $validated['amount'],
+                'old_type'        => $transaction->type,
+                'new_type'        => $validated['type'],
+                'old_category'    => $transaction->category,
+                'new_category'    => $validated['category'],
+                'old_description' => $transaction->description,
+                'new_description' => $validated['description'] ?? null,
+                'edit_reason'     => $validated['edit_reason'] ?? null,
+            ]);
+
+            $transaction->update([
+                'type'             => $validated['type'],
+                'category'         => $validated['category'],
+                'amount'           => (int) $validated['amount'],
+                'transaction_date' => $validated['transaction_date'],
+                'description'      => $validated['description'] ?? null,
+            ]);
+        });
 
         return redirect()->back()->with('success', 'Transaksi berhasil diperbarui.');
     }
 
     // -------------------------------------------------------------------------
-    // destroy
+    // destroy (soft delete)
     // -------------------------------------------------------------------------
 
-    /**
-     * Delete a cash transaction.
-     *
-     * Route model binding resolves the Transaction; middleware guards the route,
-     * and a hard gate below prevents any bypass.
-     */
     public function destroy(Transaction $transaction): RedirectResponse
     {
         if (auth()->user()->role !== 'bendahara') {
             abort(403, 'Hanya bendahara yang dapat menghapus transaksi.');
         }
 
-        $transaction->delete();
+        $transaction->delete(); // SoftDeletes trait — sets deleted_at
 
         return redirect()->back()->with('success', 'Transaksi berhasil dihapus.');
+    }
+
+    // -------------------------------------------------------------------------
+    // restore
+    // -------------------------------------------------------------------------
+
+    public function restore(int $id): RedirectResponse
+    {
+        if (auth()->user()->role !== 'bendahara') {
+            abort(403, 'Hanya bendahara yang dapat memulihkan transaksi.');
+        }
+
+        $transaction = Transaction::onlyTrashed()->findOrFail($id);
+        $transaction->restore();
+
+        return redirect()->back()->with('success', 'Transaksi berhasil dipulihkan.');
+    }
+
+    // -------------------------------------------------------------------------
+    // forceDelete — permanently destroy a single soft-deleted transaction
+    // -------------------------------------------------------------------------
+
+    public function forceDelete(int $id): RedirectResponse
+    {
+        if (auth()->user()->role !== 'bendahara') {
+            abort(403, 'Hanya bendahara yang dapat menghapus permanen transaksi.');
+        }
+
+        $transaction = Transaction::onlyTrashed()->findOrFail($id);
+        $transaction->forceDelete();
+
+        return redirect()->back()->with('success', 'Transaksi berhasil dihapus permanen.');
+    }
+
+    // -------------------------------------------------------------------------
+    // emptyTrash — permanently destroy all soft-deleted transactions
+    // -------------------------------------------------------------------------
+
+    public function emptyTrash(): RedirectResponse
+    {
+        if (auth()->user()->role !== 'bendahara') {
+            abort(403, 'Hanya bendahara yang dapat mengosongkan trash.');
+        }
+
+        Transaction::onlyTrashed()->forceDelete();
+
+        return redirect()->back()->with('success', 'Keranjang sampah berhasil dikosongkan.');
     }
 }

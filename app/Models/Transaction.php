@@ -5,10 +5,25 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Transaction extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
+
+    /**
+     * Allowed category values — single source of truth shared with controllers.
+     */
+    public const CATEGORIES = [
+        'Kas Wajib',
+        'Kas Susulan',
+        'Denda / Sanksi',
+        'Konsumsi',
+        'ATK',
+        'Kegiatan',
+        'Lainnya',
+    ];
 
     /**
      * Mass-assignable attributes.
@@ -28,9 +43,6 @@ class Transaction extends Model
 
     /**
      * Attribute casts.
-     *
-     * Casting 'amount' to integer guarantees PHP arithmetic operates on int,
-     * not a string returned by some database drivers.
      *
      * @return array<string, string>
      */
@@ -52,5 +64,13 @@ class Transaction extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * All edit audit entries for this transaction, newest first.
+     */
+    public function edits(): HasMany
+    {
+        return $this->hasMany(TransactionEdit::class)->orderByDesc('created_at');
     }
 }

@@ -119,7 +119,7 @@ class TransactionTest extends TestCase
 
         $response->assertSessionHas('success', 'Transaksi berhasil dihapus.');
 
-        $this->assertDatabaseMissing('transactions', [
+        $this->assertSoftDeleted('transactions', [
             'id' => $transaction->id,
         ]);
     }
