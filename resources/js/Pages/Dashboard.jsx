@@ -838,6 +838,121 @@ function DeleteConfirmModal({ transaction, onClose }) {
     );
 }
 
+// ─── Modal: Force Delete (Hapus Permanen) ─────────────────────────────────────
+
+function ForceDeleteConfirmModal({ transaction, onClose, onConfirm }) {
+    const open      = transaction !== null;
+    const cancelRef = useRef(null);
+    const [busy, setBusy] = useState(false);
+
+    function handleConfirm() {
+        if (!transaction) return;
+        setBusy(true);
+        router.delete(route('transactions.forceDelete', transaction.id), {
+            preserveScroll: true,
+            onFinish: () => { setBusy(false); onClose(); },
+        });
+    }
+
+    return (
+        <Transition appear show={open} as={Fragment}>
+            <Dialog as="div" className="relative z-50" onClose={() => !busy && onClose()} initialFocus={cancelRef}>
+                <Transition.Child as={Fragment} enter="ease-out duration-200" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-150" leaveFrom="opacity-100" leaveTo="opacity-0">
+                    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" aria-hidden="true" />
+                </Transition.Child>
+                <div className="fixed inset-0 overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <Transition.Child as={Fragment} enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
+                            <Dialog.Panel className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200/80">
+                                <div className="p-6">
+                                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 ring-4 ring-rose-100">
+                                        <Trash2 size={22} className="text-rose-600" />
+                                    </div>
+                                    <Dialog.Title className="text-center text-[15px] font-bold text-slate-900">Hapus Permanen?</Dialog.Title>
+                                    <Dialog.Description className="mt-2 text-center text-sm text-slate-500">
+                                        Tindakan ini <strong className="text-slate-700">tidak dapat dibatalkan</strong>. Data akan hilang selamanya.
+                                    </Dialog.Description>
+                                    {transaction && (
+                                        <div className="mt-4 rounded-xl bg-rose-50 p-3.5 ring-1 ring-rose-200/60 text-sm">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-semibold text-rose-700">{transaction.category}</span>
+                                                <span className={`font-mono tabular-nums font-bold ${transaction.type === 'masuk' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                    {transaction.type === 'masuk' ? '+' : '−'} {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(transaction.amount)}
+                                                </span>
+                                            </div>
+                                            {transaction.description && (
+                                                <p className="mt-1.5 text-xs text-slate-600 line-clamp-2">{transaction.description}</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex gap-2.5 border-t border-slate-100 px-6 py-4">
+                                    <button ref={cancelRef} type="button" onClick={onClose} disabled={busy} className="flex-1 min-h-[44px] rounded-xl border border-slate-200 bg-white py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B729F]">Batal</button>
+                                    <button type="button" onClick={handleConfirm} disabled={busy} className="flex flex-1 min-h-[44px] items-center justify-center gap-2 rounded-xl bg-rose-600 py-2 text-sm font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500">
+                                        {busy ? <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />Menghapus…</> : <><Trash2 size={14} />Hapus Permanen</>}
+                                    </button>
+                                </div>
+                            </Dialog.Panel>
+                        </Transition.Child>
+                    </div>
+                </div>
+            </Dialog>
+        </Transition>
+    );
+}
+
+// ─── Modal: Empty Trash Confirmation ──────────────────────────────────────────
+
+function EmptyTrashConfirmModal({ open, onClose }) {
+    const cancelRef = useRef(null);
+    const [busy, setBusy] = useState(false);
+
+    function handleConfirm() {
+        setBusy(true);
+        router.delete(route('transactions.emptyTrash'), {
+            preserveScroll: true,
+            onFinish: () => { setBusy(false); onClose(); },
+        });
+    }
+
+    return (
+        <Transition appear show={open} as={Fragment}>
+            <Dialog as="div" className="relative z-50" onClose={() => !busy && onClose()} initialFocus={cancelRef}>
+                <Transition.Child as={Fragment} enter="ease-out duration-200" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-150" leaveFrom="opacity-100" leaveTo="opacity-0">
+                    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" aria-hidden="true" />
+                </Transition.Child>
+                <div className="fixed inset-0 overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <Transition.Child as={Fragment} enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
+                            <Dialog.Panel className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200/80">
+                                <div className="p-6">
+                                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 ring-4 ring-rose-100">
+                                        <AlertTriangle size={22} className="text-rose-600" />
+                                    </div>
+                                    <Dialog.Title className="text-center text-[15px] font-bold text-slate-900">Kosongkan Keranjang Sampah?</Dialog.Title>
+                                    <Dialog.Description className="mt-2 text-center text-sm text-slate-500">
+                                        Semua transaksi di Trash akan dihapus <strong className="text-slate-700">selamanya</strong>. Tidak ada cara untuk memulihkan data ini.
+                                    </Dialog.Description>
+                                    <div className="mt-4 flex items-start gap-3 rounded-xl bg-amber-50 px-4 py-3 ring-1 ring-amber-200/60">
+                                        <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-600" />
+                                        <p className="text-xs leading-relaxed text-amber-800">Tindakan ini bersifat <strong>permanen</strong> dan tidak dapat dibatalkan.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2.5 border-t border-slate-100 px-6 py-4">
+                                    <button ref={cancelRef} type="button" onClick={onClose} disabled={busy} className="flex-1 min-h-[44px] rounded-xl border border-slate-200 bg-white py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B729F]">Batal</button>
+                                    <button type="button" onClick={handleConfirm} disabled={busy} className="flex flex-1 min-h-[44px] items-center justify-center gap-2 rounded-xl bg-rose-600 py-2 text-sm font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500">
+                                        {busy ? <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />Mengosongkan…</> : <><Trash2 size={14} />Ya, Kosongkan</>}
+                                    </button>
+                                </div>
+                            </Dialog.Panel>
+                        </Transition.Child>
+                    </div>
+                </div>
+            </Dialog>
+        </Transition>
+    );
+}
+
 // ─── Modal: Serah Terima Jabatan ──────────────────────────────────────────────
 
 function HandoverModal({ open, onClose, students = [] }) {
@@ -1460,14 +1575,24 @@ export default function Dashboard({
                                                     <td className="whitespace-nowrap px-5 py-3.5 text-right">
                                                         <div className="flex items-center justify-end gap-1">
                                                             {isTrash ? (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleRestore(tx.id)}
-                                                                    aria-label={`Pulihkan transaksi ${tx.description || tx.category}`}
-                                                                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                                                                >
-                                                                    <RefreshCw size={13} />Pulihkan
-                                                                </button>
+                                                                <>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleRestore(tx.id)}
+                                                                        aria-label={`Pulihkan transaksi ${tx.description || tx.category}`}
+                                                                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                                                                    >
+                                                                        <RefreshCw size={13} />Pulihkan
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setForceDeleteTarget(tx)}
+                                                                        aria-label={`Hapus permanen transaksi ${tx.description || tx.category}`}
+                                                                        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                </>
                                                             ) : (
                                                                 <>
                                                                     <button type="button" onClick={() => setEditTarget(tx)} aria-label={`Edit transaksi ${tx.description || tx.category}`} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
@@ -1513,9 +1638,14 @@ export default function Dashboard({
                                                         {tx.type === 'masuk' ? '+' : '−'} {formatRupiah(tx.amount)}
                                                     </span>
                                                     {isTrash ? (
-                                                        <button type="button" onClick={() => handleRestore(tx.id)} aria-label="Pulihkan transaksi" className="flex min-h-[44px] items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
-                                                            <RefreshCw size={13} />
-                                                        </button>
+                                                        <>
+                                                            <button type="button" onClick={() => handleRestore(tx.id)} aria-label="Pulihkan transaksi" className="flex min-h-[44px] items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+                                                                <RefreshCw size={13} />
+                                                            </button>
+                                                            <button type="button" onClick={() => setForceDeleteTarget(tx)} aria-label="Hapus permanen" className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400">
+                                                                <Trash2 size={15} />
+                                                            </button>
+                                                        </>
                                                     ) : (
                                                         <>
                                                             <button type="button" onClick={() => setEditTarget(tx)} aria-label="Edit" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"><Pencil size={15} /></button>
@@ -1529,7 +1659,7 @@ export default function Dashboard({
                                 </ul>
                             </div>
 
-                            {transactions && transactions.last_page > 1 && <Pagination meta={transactions} />}
+                            {transactions && <Pagination meta={transactions} />}
                         </div>
                     </section>
                 </main>
@@ -1537,10 +1667,12 @@ export default function Dashboard({
 
             {/* ── MODALS ── */}
             <TambahTransaksiModal open={showAdd} onClose={() => setShowAdd(false)} categories={categories} />
-            <EditTransaksiModal   transaction={editTarget}    onClose={() => setEditTarget(null)}    categories={categories} />
-            <DeleteConfirmModal   transaction={deleteTarget}  onClose={() => setDeleteTarget(null)} />
-            <EditHistoryModal     transaction={historyTarget} onClose={() => setHistoryTarget(null)} />
-            <HandoverModal        open={showHandover}         onClose={() => setShowHandover(false)} students={students} />
+            <EditTransaksiModal   transaction={editTarget}      onClose={() => setEditTarget(null)}      categories={categories} />
+            <DeleteConfirmModal   transaction={deleteTarget}    onClose={() => setDeleteTarget(null)} />
+            <EditHistoryModal     transaction={historyTarget}   onClose={() => setHistoryTarget(null)} />
+            <HandoverModal        open={showHandover}           onClose={() => setShowHandover(false)} students={students} />
+            <ForceDeleteConfirmModal transaction={forceDeleteTarget} onClose={() => setForceDeleteTarget(null)} />
+            <EmptyTrashConfirmModal  open={showEmptyTrash}          onClose={() => setShowEmptyTrash(false)} />
             <FlashToast flash={flash} />
         </>
     );
