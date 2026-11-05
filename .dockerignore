@@ -1,0 +1,37 @@
+# Dependencies (rebuilt inside Docker)
+node_modules/
+vendor/
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Local environment — NEVER bake secrets into image
+.env
+.env.local
+.env.*.local
+
+# Laravel storage keys & SQLite dev databases
+storage/*.key
+database/database.sqlite
+database/*.sqlite
+
+# Build artifacts already compiled in node-builder stage
+public/hot
+
+# IDE / OS noise
+.idea/
+.vscode/
+*.DS_Store
+Thumbs.db
+
+# Docker source files themselves
+Dockerfile
+.dockerignore
+docker/
+
+# CI / docs
+.github/
+*.md
+
