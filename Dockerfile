@@ -75,14 +75,15 @@ COPY --from=node-builder /app/public/build /app/public/build
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Laravel writable directories
-RUN mkdir -p storage/framework/{cache,sessions,views} \
+# Hugging Face Spaces runs as user UID 1000
+RUN adduser -D -u 1000 user \
+    && mkdir -p storage/framework/{cache,sessions,views} \
              storage/logs \
              bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache
+    && chown -R user:user storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-USER www-data
+USER user
 
 EXPOSE 8080
 
