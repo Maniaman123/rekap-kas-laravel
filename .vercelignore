@@ -6,3 +6,6 @@ database/*.sqlite
 tests/
 Dockerfile
 docker/
+package.json
+package-lock.json
+vite.config.js
