@@ -5,14 +5,14 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        commands: __DIR__.'/../routes/console.php',
+        web: __DIR__ . '/../routes/web.php',
+        commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Trust all reverse proxies (cloud LBs: Render, Fly.io, Koyeb, Cloudflare)
+        // Trust all reverse proxies (Vercel, Render, Fly.io, Koyeb, Cloudflare)
         // so Laravel correctly resolves HTTPS scheme and client IP from X-Forwarded-* headers.
         $middleware->trustProxies(at: '*');
 
@@ -27,6 +27,12 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+            fn(Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
     })->create();
+
+if (isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL'])) {
+    $app->useStoragePath('/tmp/storage');
+}
+
+return $app;

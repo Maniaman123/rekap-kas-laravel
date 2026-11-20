@@ -98,9 +98,9 @@ return [
             'search_path'    => 'public',
             // Supabase / PgBouncer: 'require' enforces SSL on all environments.
             'sslmode'        => env('DB_SSLMODE', 'require'),
-            // PgBouncer Transaction Mode requires emulated prepared statements
-            // (port 6543). Set DB_PGBOUNCER=true in production .env to activate.
-            'options'        => env('DB_PGBOUNCER', false) ? [
+            // PgBouncer compatibility requires emulated prepared statements
+            // (e.g. port 6543 Transaction Mode). Toggle via DB_EMULATE_PREPARES / DB_PGBOUNCER.
+            'options'        => (env('DB_EMULATE_PREPARES', false) || env('DB_PGBOUNCER', false)) ? [
                 \PDO::ATTR_EMULATE_PREPARES => true,
             ] : [],
         ],
